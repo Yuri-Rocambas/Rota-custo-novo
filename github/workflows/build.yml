@@ -1,0 +1,51 @@
+
+name: Gerar APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar arquivos
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android
+        uses: android-actions/setup-android@v3
+
+      - name: Extrair projeto
+        run: |
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Arquivo ZIP não encontrado"
+            exit 1
+          fi
+          mkdir -p projeto
+          unzip -q "$ZIP_FILE" -d projeto
+          GRADLEW=$(find projeto -type f -name gradlew | head -n 1)
+          if [ -z "$GRADLEW" ]; then
+            echo "Arquivo gradlew não encontrado"
+            exit 1
+          fi
+          chmod +x "$GRADLEW"
+          echo "PROJECT_DIR=$(dirname "$GRADLEW")" >> "$GITHUB_ENV"
+
+      - name: Compilar APK
+        run: |
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RotaCusto-APK
+          path: projeto/**/build/outputs/apk/debug/*.apk
+          
